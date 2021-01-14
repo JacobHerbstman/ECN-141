@@ -1,0 +1,125 @@
+---
+title: "ECN 141 HW1"
+author: "Jacob Herbstman"
+date: "1/14/2021"
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+Install packages necessary: 
+
+```{r}
+knitr::opts_chunk$set(echo = TRUE)
+library(haven)
+library(dplyr)
+library(ggplot2)
+library(sandwich)
+library(lmtest)
+```
+
+
+a)
+```{r}
+Davis2018 <- read_dta("~/Downloads/Davis2018.dta")
+Davis2018$ClosingYear <- substr(Davis2018$ClosingDate, 1, 4)
+Davis2018$ClosingYear <- as.numeric(Davis2018$ClosingYear)
+
+Davis2018$ClosingMonth <- substr(Davis2018$ClosingDate, 6, 7)
+Davis2018$ClosingMonth <- as.numeric(Davis2018$ClosingDate) 
+```
+
+
+b)
+```{r}
+sample2018 <- Davis2018 %>% 
+  filter(ClosingYear == 2018)
+```
+
+c)
+```{r}
+fig.dist <- split(sample2018$SalePrice, sample2018$Bedroom)
+fig.mean <- sapply(fig.dist, mean, na.rm = T)
+houseplot <- barplot(fig.mean, xlab = 'Bedrooms', ylab = 'Average Sale Price')
+```
+
+d)
+```{r}
+reg <- lm(Davis2018$SalePrice~Davis2018$ClosingMonth)
+summary(reg)
+```
+With an F statistic of .225 leading to a p-value of .6356, we find the overall regression is not significant at the .05 level. 
+
+
+e)
+```{r}
+coeftest(lm(Davis2018$SalePrice~Davis2018$ClosingMonth), vcov=sandwich)
+```
+By using the lmtest and sandwich packages, I obtained slightly larger, but robust, standard errors.
+
+f)
+```{r}
+reg2 <- lm(Davis2018$SalePrice ~ Davis2018$ListPrice + Davis2018$DaysOnMarket)
+summary(reg2)
+```
+One interprets the slope coefficients in a multiple regression like this as the change in Sale price from a one-unit increase in List price or Days on market, holding the other regressor constant. Along with this, I don’t believe the zero conditional mean assumption is satisfied. Since there are only two regressors, neither of which are house characteristics, it is almost certain that house characteristics affect list price and days on market, and are biasing the OLS estimates of the included regressors. 
+
+g)
+```{r}
+reg3 <- lm(Davis2018$SalePrice ~ Davis2018$ListPrice + Davis2018$DaysOnMarket + Davis2018$HasPool + Davis2018$Size)
+summary(reg3)
+```
+This regression, which adds the pool dummy variable and a regressor for size of the house, is highly significant at any threshold with an F-statistic of 4775.
+
+h)
+```{r}
+reg4 <- lm(Davis2018$SalePrice ~ Davis2018$ListPrice + 
+             Davis2018$DaysOnMarket + I(Davis2018$DaysOnMarket^2))
+summary(reg4)
+reg4$coefficients
+-396.3832153*7 + 0.8068395*7
+```
+If a house is on the market a week longer than another, it will on average sell for 2,769 dollars less.
+
+Question 2:
+
+a)
+```{r}
+RENTAL <- Davis2018 <- read_dta("~/Downloads/RENTAL.dta")
+rental90 <- RENTAL %>% 
+  filter(y90 == 1)
+reg5 <- lm(lrent~lpop+lavginc+pctstu, data = rental90)
+summary(reg5)
+```
+If both the independent and dependent variable are log variables, the coefficient can be interpreted as an elasticity. So a unit increase in average income will result in .507 percent higher rents. Since the second variable, pctstu, is not in terms of log, we say that a one percentage point increase in percentage of population students results in .563 percent higher rents in the area. 
+
+b)
+```{r, echo=F}
+rent90 <- rental90 %>% 
+  select(lrent)
+rent80 <- RENTAL %>% 
+  filter(year == 80) %>% 
+  select(lrent)
+rent90 - rent80
+clrentexist <- RENTAL %>% 
+  filter(clrent != 'NA')
+clrentexist$clrent == (rent90-rent80)
+```
+We can interpret clrent = .5516 as a .5516 percent change in rents when going from 1980 to 1990. 
+
+c)
+```{r}
+reg6 <- lm(clrent ~ clpop+clavginc+cpctstu, data = RENTAL) 
+summary(reg6)
+```
+Holding change in population, average income, and percent of population that is students constant, the intercept is theoretically the change in rent without any of those factors, which could be roughly equivalent to inflation. Holding those constant, rents will increase .38 percent for a 10 unit increase in year (10 years later). Also, the zero conditional mean assumption likely doesn’t hold here, as many omitted factors likely contribute to average income and the makeup and size of the population. 
+
+
+
+
+
+
+
+
+
+
